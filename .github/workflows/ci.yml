@@ -80,7 +80,7 @@ jobs:
         
     services:
       mongodb:
-        image: mongo:${{ env.MONGODB_VERSION }}
+        image: mongo:5.0
         ports:
           - 27017:27017
         options: >-
