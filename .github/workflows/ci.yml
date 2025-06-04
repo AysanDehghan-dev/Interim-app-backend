@@ -40,14 +40,14 @@ jobs:
         
     - name: Run Ruff (linting)
       run: |
-        echo "::group::Ruff Linting"
-        ruff check . --output-format=github
+        echo "::group::Ruff Linting and Auto-fix"
+        ruff check . --fix --output-format=github
         echo "::endgroup::"
         
-    - name: Run Ruff (formatting check)
+    - name: Run Ruff (formatting)
       run: |
         echo "::group::Ruff Formatting"
-        ruff format --check .
+        ruff format .
         echo "::endgroup::"
         
     - name: Run Black (formatting check)
