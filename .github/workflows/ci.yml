@@ -43,8 +43,11 @@ jobs:
         echo "::group::Ruff Auto-fix"
         # Fix bare except clauses
         find app/ -name "*.py" -exec sed -i 's/except:/except Exception:/g' {} \;
-        # Remove unused variable in __init__.py
-        sed -i 's/api = Api(app)/# api = Api(app)  # Unused variable removed/g' app/__init__.py
+        # Remove unused Api import and variable in __init__.py
+        sed -i 's/from flask_restful import Api//g' app/__init__.py
+        sed -i 's/api = Api(app)//g' app/__init__.py
+        # Clean up empty lines
+        sed -i '/^$/N;/^\n$/d' app/__init__.py
         # Run ruff fix
         ruff check . --fix --output-format=github
         echo "::endgroup::"
