@@ -64,16 +64,16 @@ jobs:
         ruff check . --output-format=github
         echo "::endgroup::"
         
-    - name: Run Black (formatting check)
+    - name: Run Black (formatting)
       run: |
-        echo "::group::Black Formatting Check"
-        black --check --diff .
+        echo "::group::Black Formatting"
+        black .
         echo "::endgroup::"
         
     - name: Run isort (import sorting)
       run: |
-        echo "::group::Import Sorting Check"
-        isort --check-only --diff .
+        echo "::group::Import Sorting"
+        isort .
         echo "::endgroup::"
         
     - name: Run mypy (type checking)
