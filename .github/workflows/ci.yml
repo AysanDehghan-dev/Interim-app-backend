@@ -58,16 +58,11 @@ jobs:
         ruff format .
         echo "::endgroup::"
         
-    - name: Commit fixes (if any)
+    - name: Verify fixes applied
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add -A
-        if ! git diff --cached --exit-code; then
-          git commit -m "style: auto-fix ruff errors [skip ci]"
-          git push
-        fi
-      if: github.event_name == 'push'
+        echo "::group::Final Ruff Check"
+        ruff check . --output-format=github
+        echo "::endgroup::"
         
     - name: Run Black (formatting check)
       run: |
