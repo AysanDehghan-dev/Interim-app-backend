@@ -27,6 +27,25 @@ class TestConfig:
     DEFAULT_PAGE_SIZE = 10
     MAX_PAGE_SIZE = 100
 
+class MockTestConfig:
+    SECRET_KEY = 'test-secret-key'
+    TESTING = True
+    DEBUG = False
+    MONGODB_URL = 'mongodb://mock:27017/mock_db'
+    MONGODB_DB = 'mock_test_db'
+    JWT_SECRET_KEY = 'test-jwt-secret'
+    JWT_ACCESS_TOKEN_EXPIRES = 3600
+
+@pytest.fixture(scope='session')
+def mock_app():
+    os.environ['CI'] = 'true'
+    app = create_app()
+    app.config.from_object(MockTestConfig)
+    return app
+
+@pytest.fixture
+def mock_client(mock_app):
+    return mock_app.test_client()
 
 @pytest.fixture(scope='session')
 def app():

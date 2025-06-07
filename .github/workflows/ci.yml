@@ -125,35 +125,46 @@ jobs:
         echo "GitHub Actions: $GITHUB_ACTIONS"
         python -c "import os; print(f'CI detected: {os.getenv(\"CI\", \"false\").lower() == \"true\"}')"
         
-    - name: Setup mock test files
-      run: |
-        echo "Setting up mock test files for CI..."
-        python setup_mock_files.py
-        
-    - name: Verify mock files created
-      run: |
-        echo "Verifying mock test files..."
-        find . -name "test_mock_*.py" -type f
-        find . -name "mock_database.py" -type f
-        ls -la tests/ || ls -la backend/tests/ || echo "No test directory found"
-        
     - name: Run smoke tests (basic functionality)
       run: |
         echo "::group::Smoke Tests"
-        python -m pytest tests/test_mock_basic.py::TestMockBasic::test_mock_home_endpoint -v || python -m pytest backend/tests/test_mock_basic.py::TestMockBasic::test_mock_home_endpoint -v
+        
+        # Detect test directory
+        if [ -d "backend/tests" ]; then
+          TEST_DIR="backend/tests"
+        else
+          TEST_DIR="tests"
+        fi
+        
+        python -m pytest "$TEST_DIR/test_mock_basic.py::TestMockBasic::test_mock_home_endpoint" -v
         echo "::endgroup::"
         
     - name: Run mock authentication tests  
       run: |
         echo "::group::Mock Auth Tests"
-        python -m pytest tests/test_mock_basic.py -v --tb=short || python -m pytest backend/tests/test_mock_basic.py -v --tb=short
+        
+        # Detect test directory
+        if [ -d "backend/tests" ]; then
+          TEST_DIR="backend/tests"
+        else
+          TEST_DIR="tests"
+        fi
+        
+        python -m pytest "$TEST_DIR/test_mock_basic.py" -v --tb=short
         echo "::endgroup::"
         
     - name: Run all mock tests with coverage
       run: |
         echo "::group::Full Mock Test Suite with Coverage"
-        # Try tests/ directory first, then backend/tests/
-        python -m pytest tests/test_mock_basic.py --cov=app --cov-report=html:htmlcov --cov-report=term-missing --cov-fail-under=30 -v || python -m pytest backend/tests/test_mock_basic.py --cov=app --cov-report=html:htmlcov --cov-report=term-missing --cov-fail-under=30 -v
+        
+        # Detect test directory
+        if [ -d "backend/tests" ]; then
+          TEST_DIR="backend/tests"
+        else
+          TEST_DIR="tests"
+        fi
+        
+        python -m pytest "$TEST_DIR/test_mock_basic.py" --cov=app --cov-report=html:htmlcov --cov-report=term-missing --cov-fail-under=30 -v
         echo "::endgroup::"
         
     - name: Generate coverage reports
