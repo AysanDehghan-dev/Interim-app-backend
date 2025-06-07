@@ -49,20 +49,21 @@ jobs:
         sed -i 's/api = Api(app)//g' app/__init__.py 2>/dev/null || true
         # Clean up empty lines
         sed -i '/^$/N;/^\n$/d' app/__init__.py 2>/dev/null || true
-        # Run ruff fix (ignore mock files if they exist)
-        ruff check . --fix --output-format=github --extend-exclude="tests/mocks/"
+        # Run ruff fix, excluding tests/mocks directory
+        ruff check . --fix --output-format=github --exclude="tests/mocks/*"
         echo "::endgroup::"
         
     - name: Run Ruff (formatting)
       run: |
         echo "::group::Ruff Formatting"
-        ruff format . --extend-exclude="tests/mocks/"
+        # Format all files except tests/mocks
+        ruff format . --exclude="tests/mocks/*"
         echo "::endgroup::"
         
     - name: Verify fixes applied
       run: |
         echo "::group::Final Ruff Check"
-        ruff check . --output-format=github --extend-exclude="tests/mocks/"
+        ruff check . --output-format=github --exclude="tests/mocks/*"
         echo "::endgroup::"
         
     - name: Run Black (formatting)
