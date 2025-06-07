@@ -45,22 +45,56 @@ class MockTestConfig:
 
 @pytest.fixture(scope='session')
 def mock_app():
-    """Create application for mock testing with database patching"""
+    """Create application for mock testing with comprehensive database patching"""
     os.environ['CI'] = 'true'
     
-    # Mock the database initialization to prevent MongoDB connection
+    # Mock all database-related functions and model methods
     with patch('app.database.init_db') as mock_init_db, \
          patch('app.database.get_db') as mock_get_db, \
          patch('app.database.close_db') as mock_close_db, \
+         patch('app.database.get_collection') as mock_get_collection, \
+         patch('app.database.find_documents') as mock_find_documents, \
+         patch('app.database.find_document') as mock_find_document, \
+         patch('app.database.count_documents') as mock_count_documents, \
+         patch('app.database.insert_document') as mock_insert_document, \
+         patch('app.database.update_document') as mock_update_document, \
+         patch('app.database.delete_document') as mock_delete_document, \
+         patch('app.models.user.User.find_all') as mock_user_find_all, \
+         patch('app.models.user.User.count_all') as mock_user_count_all, \
+         patch('app.models.company.Company.find_all') as mock_company_find_all, \
+         patch('app.models.company.Company.count_all') as mock_company_count_all, \
+         patch('app.models.job.Job.find_all') as mock_job_find_all, \
+         patch('app.models.job.Job.search_jobs') as mock_job_search, \
+         patch('app.models.job.Job.count_all') as mock_job_count_all, \
          patch('pymongo.MongoClient') as mock_mongo_client:
         
-        # Configure mocks
+        # Configure basic mocks
         mock_init_db.return_value = None
         mock_close_db.return_value = None
         
         # Mock database object
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
+        mock_get_collection.return_value = MagicMock()
+        
+        # Mock database operations
+        mock_find_documents.return_value = []
+        mock_find_document.return_value = None
+        mock_count_documents.return_value = 0
+        mock_insert_document.return_value = 'mock_id'
+        mock_update_document.return_value = True
+        mock_delete_document.return_value = True
+        
+        # Mock model methods with empty results
+        mock_user_find_all.return_value = []
+        mock_user_count_all.return_value = 0
+        
+        mock_company_find_all.return_value = []
+        mock_company_count_all.return_value = 0
+        
+        mock_job_find_all.return_value = []
+        mock_job_search.return_value = []
+        mock_job_count_all.return_value = 0
         
         # Mock MongoDB client
         mock_client = MagicMock()
