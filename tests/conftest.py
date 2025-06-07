@@ -1,6 +1,7 @@
 import pytest
 import os
 import tempfile
+from unittest.mock import patch, MagicMock
 from pymongo import MongoClient
 from app import create_app
 from app.models.user import User
@@ -27,7 +28,9 @@ class TestConfig:
     DEFAULT_PAGE_SIZE = 10
     MAX_PAGE_SIZE = 100
 
+
 class MockTestConfig:
+    """Mock test configuration for CI environments"""
     SECRET_KEY = 'test-secret-key'
     TESTING = True
     DEBUG = False
@@ -35,17 +38,46 @@ class MockTestConfig:
     MONGODB_DB = 'mock_test_db'
     JWT_SECRET_KEY = 'test-jwt-secret'
     JWT_ACCESS_TOKEN_EXPIRES = 3600
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024
+    DEFAULT_PAGE_SIZE = 10
+    MAX_PAGE_SIZE = 100
+
 
 @pytest.fixture(scope='session')
 def mock_app():
+    """Create application for mock testing with database patching"""
     os.environ['CI'] = 'true'
-    app = create_app()
-    app.config.from_object(MockTestConfig)
-    return app
+    
+    # Mock the database initialization to prevent MongoDB connection
+    with patch('app.database.init_db') as mock_init_db, \
+         patch('app.database.get_db') as mock_get_db, \
+         patch('app.database.close_db') as mock_close_db, \
+         patch('pymongo.MongoClient') as mock_mongo_client:
+        
+        # Configure mocks
+        mock_init_db.return_value = None
+        mock_close_db.return_value = None
+        
+        # Mock database object
+        mock_db = MagicMock()
+        mock_get_db.return_value = mock_db
+        
+        # Mock MongoDB client
+        mock_client = MagicMock()
+        mock_mongo_client.return_value = mock_client
+        
+        # Create app with mocked database
+        app = create_app()
+        app.config.from_object(MockTestConfig)
+        
+        return app
+
 
 @pytest.fixture
 def mock_client(mock_app):
+    """Create test client for mock tests"""
     return mock_app.test_client()
+
 
 @pytest.fixture(scope='session')
 def app():
