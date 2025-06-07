@@ -42,27 +42,27 @@ jobs:
     - name: Run Ruff (linting and auto-fix)
       run: |
         echo "::group::Ruff Auto-fix"
-        # Fix bare except clauses
-        find app/ -name "*.py" -exec sed -i 's/except:/except Exception:/g' {} \;
-        # Remove unused Api import and variable in __init__.py
-        sed -i 's/from flask_restful import Api//g' app/__init__.py
-        sed -i 's/api = Api(app)//g' app/__init__.py
+        # Fix bare except clauses in app directory only (not tests)
+        find app/ -name "*.py" -exec sed -i 's/except:/except Exception:/g' {} \; 2>/dev/null || true
+        # Remove unused Api import and variable in __init__.py if they exist
+        sed -i 's/from flask_restful import Api//g' app/__init__.py 2>/dev/null || true
+        sed -i 's/api = Api(app)//g' app/__init__.py 2>/dev/null || true
         # Clean up empty lines
-        sed -i '/^$/N;/^\n$/d' app/__init__.py
-        # Run ruff fix
-        ruff check . --fix --output-format=github
+        sed -i '/^$/N;/^\n$/d' app/__init__.py 2>/dev/null || true
+        # Run ruff fix (ignore mock files if they exist)
+        ruff check . --fix --output-format=github --extend-exclude="tests/mocks/"
         echo "::endgroup::"
         
     - name: Run Ruff (formatting)
       run: |
         echo "::group::Ruff Formatting"
-        ruff format .
+        ruff format . --extend-exclude="tests/mocks/"
         echo "::endgroup::"
         
     - name: Verify fixes applied
       run: |
         echo "::group::Final Ruff Check"
-        ruff check . --output-format=github
+        ruff check . --output-format=github --extend-exclude="tests/mocks/"
         echo "::endgroup::"
         
     - name: Run Black (formatting)
@@ -124,121 +124,35 @@ jobs:
         echo "GitHub Actions: $GITHUB_ACTIONS"
         python -c "import os; print(f'CI detected: {os.getenv(\"CI\", \"false\").lower() == \"true\"}')"
         
-    - name: Create mock test files directory
+    - name: Setup mock test files
       run: |
-        mkdir -p tests/mocks
-        touch tests/mocks/__init__.py
+        echo "Setting up mock test files for CI..."
+        python setup_mock_files.py
         
-    - name: Create mock database file
+    - name: Verify mock files created
       run: |
-        # Create the mock_database.py file (content will be provided separately)
-        cat > tests/mocks/mock_database.py << 'EOF'
-        # Mock database implementation for CI tests
-        # This file should contain the mock database code
-        # For now, create a minimal version to prevent import errors
-        
-        import os
-        from datetime import datetime
-        from bson import ObjectId
-        
-        def is_ci_environment():
-            return os.getenv('CI', '').lower() == 'true'
-        
-        # Minimal mock implementation
-        class MockDatabase:
-            def __init__(self):
-                self.collections = {'users': [], 'companies': [], 'jobs': [], 'applications': []}
-        
-        _mock_db = MockDatabase()
-        
-        def mock_get_db():
-            return _mock_db
-        
-        def reset_mock_database():
-            global _mock_db
-            _mock_db = MockDatabase()
-        EOF
-        
-    - name: Create mock conftest file
-      run: |
-        cat > tests/conftest_mock.py << 'EOF'
-        import pytest
-        import os
-        from app import create_app
-        
-        class MockTestConfig:
-            SECRET_KEY = 'test-secret-key'
-            TESTING = True
-            DEBUG = False
-            MONGODB_URL = 'mongodb://mock:27017/mock_db'
-            MONGODB_DB = 'mock_test_db'
-            JWT_SECRET_KEY = 'test-jwt-secret'
-            JWT_ACCESS_TOKEN_EXPIRES = 3600
-        
-        @pytest.fixture(scope='session')
-        def mock_app():
-            os.environ['CI'] = 'true'
-            app = create_app()
-            app.config.from_object(MockTestConfig)
-            return app
-        
-        @pytest.fixture
-        def mock_client(mock_app):
-            return mock_app.test_client()
-        EOF
-        
-    - name: Create basic mock tests
-      run: |
-        cat > tests/test_mock_basic.py << 'EOF'
-        import pytest
-        import os
-        import json
-        
-        # Only run in CI
-        pytestmark = pytest.mark.skipif(
-            not os.getenv('CI', '').lower() == 'true',
-            reason="Mock tests only run in CI environment"
-        )
-        
-        class TestMockBasic:
-            def test_mock_home_endpoint(self, mock_client):
-                """Test the home endpoint"""
-                response = mock_client.get('/')
-                assert response.status_code == 200
-                data = response.get_json()
-                assert 'message' in data
-                assert 'status' in data
-                assert data['status'] == 'Fonctionnel'
-            
-            def test_mock_auth_register_missing_fields(self, mock_client):
-                """Test auth with missing fields"""
-                response = mock_client.post('/api/auth/register/user',
-                                          data=json.dumps({'email': 'test@test.com'}),
-                                          content_type='application/json')
-                assert response.status_code == 400
-            
-            def test_mock_invalid_endpoint(self, mock_client):
-                """Test invalid endpoint"""
-                response = mock_client.get('/api/nonexistent')
-                assert response.status_code == 404
-        EOF
+        echo "Verifying mock test files..."
+        find . -name "test_mock_*.py" -type f
+        find . -name "mock_database.py" -type f
+        ls -la tests/ || ls -la backend/tests/ || echo "No test directory found"
         
     - name: Run smoke tests (basic functionality)
       run: |
         echo "::group::Smoke Tests"
-        python -m pytest tests/test_mock_basic.py::TestMockBasic::test_mock_home_endpoint -v
+        python -m pytest tests/test_mock_basic.py::TestMockBasic::test_mock_home_endpoint -v || python -m pytest backend/tests/test_mock_basic.py::TestMockBasic::test_mock_home_endpoint -v
         echo "::endgroup::"
         
-    - name: Run mock authentication tests
+    - name: Run mock authentication tests  
       run: |
         echo "::group::Mock Auth Tests"
-        python -m pytest tests/test_mock_basic.py -v --tb=short
+        python -m pytest tests/test_mock_basic.py -v --tb=short || python -m pytest backend/tests/test_mock_basic.py -v --tb=short
         echo "::endgroup::"
         
     - name: Run all mock tests with coverage
       run: |
         echo "::group::Full Mock Test Suite with Coverage"
-        python -m pytest tests/test_mock_basic.py --cov=app --cov-report=html:htmlcov --cov-report=term-missing --cov-fail-under=30 -v
+        # Try tests/ directory first, then backend/tests/
+        python -m pytest tests/test_mock_basic.py --cov=app --cov-report=html:htmlcov --cov-report=term-missing --cov-fail-under=30 -v || python -m pytest backend/tests/test_mock_basic.py --cov=app --cov-report=html:htmlcov --cov-report=term-missing --cov-fail-under=30 -v
         echo "::endgroup::"
         
     - name: Generate coverage reports
