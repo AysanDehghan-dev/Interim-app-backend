@@ -6,6 +6,7 @@ Used in CI/CD environments where MongoDB is not available
 import os
 from datetime import datetime
 from bson import ObjectId
+from bson.errors import InvalidId
 from typing import Dict, List, Any, Optional
 
 class MockDatabase:
@@ -35,7 +36,7 @@ class MockDatabase:
             for doc in self.collections[collection_name]:
                 if doc.get('_id') == target_id:
                     return doc
-        except:
+        except (ValueError, TypeError, InvalidId):
             pass
         return None
     
@@ -142,7 +143,7 @@ class MockDatabase:
                 if isinstance(value, str):
                     try:
                         value = ObjectId(value)
-                    except:
+                    except (ValueError, TypeError, InvalidId):
                         pass
                 if doc_id != value:
                     return False
